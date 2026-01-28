@@ -1,0 +1,9 @@
+save_dir: "data/"
+
+
+save_paths:
+  gray: "gray_data.pt"
+  clahe: "clahe_data.pt"
+  edges: "edges_data.pt"
+  RGB: "RGB_data.pt"
+
