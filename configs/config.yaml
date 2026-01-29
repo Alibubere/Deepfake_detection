@@ -7,3 +7,5 @@ save_paths:
   edges: "edges_data.pt"
   RGB: "RGB_data.pt"
 
+
+root_dir: "Final_Dataset"

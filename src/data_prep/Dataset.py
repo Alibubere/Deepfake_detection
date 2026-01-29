@@ -57,7 +57,7 @@ class ImageDatasetwithCV(Dataset):
         if img.ndim == 2:
             img = img[..., None]
 
-        img.permute(2, 0, 1)
+        img = img.permute(2, 0, 1)
 
         if img.shape[0] == 1:
             img = img.repeat(3, 1, 1)
