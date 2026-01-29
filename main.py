@@ -52,16 +52,16 @@ def main():
     test_transform = get_test_transform()
 
     full_dataset_gray = get_optimized_dataset(
-        root_dir, save_prefix,save_dir=save_dir, mode="gray", transform=test_transform
+        root_dir, save_prefix, save_dir=save_dir, mode="gray", transform=test_transform
     )
     full_dataset_clahe = get_optimized_dataset(
-        root_dir, save_prefix,save_dir=save_dir ,mode="clahe", transform=test_transform
+        root_dir, save_prefix, save_dir=save_dir, mode="clahe", transform=test_transform
     )
     full_dataset_edges = get_optimized_dataset(
-        root_dir, save_prefix,save_dir=save_dir, mode="edges", transform=test_transform
+        root_dir, save_prefix, save_dir=save_dir, mode="edges", transform=test_transform
     )
     full_dataset_RGB = get_optimized_dataset(
-        root_dir, save_prefix,save_dir=save_dir, mode="RGB", transform=test_transform
+        root_dir, save_prefix, save_dir=save_dir, mode="RGB", transform=test_transform
     )
 
 
