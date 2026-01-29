@@ -1,11 +1,16 @@
 save_dir: "data/"
 
 
-save_paths:
-  gray: "gray_data.pt"
-  clahe: "clahe_data.pt"
-  edges: "edges_data.pt"
-  RGB: "RGB_data.pt"
-
-
 root_dir: "Final_Dataset"
+
+save_prefix: "processed_data"
+
+training:
+  num_epochs: 20
+  batch_size: 90
+  num_workers: 2
+  lr: 1e-3
+  weight_decay: 1e-4
+  resume: True
+
+

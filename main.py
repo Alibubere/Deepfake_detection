@@ -1,7 +1,11 @@
 import logging
 import os
 import yaml
-from src.data_prep.optimized_dataset import get_optimized_dataset, get_transform
+from src.data_prep.optimized_dataset import (
+    get_optimized_dataset,
+    get_train_transform,
+    get_test_transform,
+)
 
 
 def setup_logging():
@@ -33,32 +37,31 @@ def main():
     save_dir = config["save_dir"]
     os.makedirs(save_dir, exist_ok=True)
 
-    # Save paths
-    save_paths = config["save_paths"]
-    gray_path = save_paths["gray"]
-    clahe_path = save_paths["clahe"]
-    edges_path = save_paths["edges"]
-    rgb_path = save_paths["RGB"]
+    # Save Prefix
+    save_prefix = config["save_prefix"]
 
-    # Full paths
-    gray_full_path = os.path.join(save_dir, gray_path)
-    clahe_full_path = os.path.join(save_dir, clahe_path)
-    edges_full_path = os.path.join(save_dir, edges_path)
-    rgb_full_path = os.path.join(save_dir, rgb_path)
+    train_config = config["training"]
+    num_epochs = train_config["num_epochs"]
+    batch_size = train_config["batch_size"]
+    num_workers = train_config["num_workers"]
+    lr = train_config["lr"]
+    weight_decay = train_config["weight_decay"]
+    resume = train_config["resume"]
 
-    transform = get_transform()
+    train_transform = get_train_transform()
+    test_transform = get_test_transform()
 
     full_dataset_gray = get_optimized_dataset(
-        root_dir, gray_full_path, mode="gray", transform=transform
+        root_dir, save_prefix,save_dir=save_dir, mode="gray", transform=test_transform
     )
     full_dataset_clahe = get_optimized_dataset(
-        root_dir, clahe_full_path, mode="clahe", transform=transform
+        root_dir, save_prefix,save_dir=save_dir ,mode="clahe", transform=test_transform
     )
     full_dataset_edges = get_optimized_dataset(
-        root_dir, save_path=edges_full_path, mode="edges", transform=transform
+        root_dir, save_prefix,save_dir=save_dir, mode="edges", transform=test_transform
     )
     full_dataset_RGB = get_optimized_dataset(
-        root_dir, rgb_full_path, mode="RGB", transform=transform
+        root_dir, save_prefix,save_dir=save_dir, mode="RGB", transform=test_transform
     )
 
 

@@ -3,48 +3,79 @@ import logging
 from torch.utils.data import TensorDataset
 import torch
 from src.data_prep.Dataset import ImageDatasetwithCV
-from torchvision.transforms import transforms
+from torchvision.transforms import transforms, Resize
+from src.data_prep.MemapDataset import MemmapDataset
+import numpy as np
+from tqdm import tqdm
 
-def get_optimized_dataset(raw_dataset_path, save_path, mode="RGB", transform=None):
-    if os.path.exists(save_path):
 
-        logging.info(f"Loading processed data from {save_path}")
+def get_optimized_dataset(
+    raw_dataset_path, save_prefix, save_dir ,mode="RGB", target_size=(224, 224), transform=None
+):
+    if not os.path.isdir(save_dir):
+        os.makedirs(save_dir)
+    
+    bin_path = f"{save_prefix}_{mode}_images.bin"
+    label_path = f"{save_prefix}_{mode}_labels.npy"
+    meta_path = f"{save_prefix}_{mode}_meta.pt"
 
-        data = torch.load(save_path)
+    bin_path_full = os.path.join(save_dir,bin_path)
+    label_path_full = os.path.join(save_dir,label_path)
+    meta_path_full = os.path.join(save_dir,meta_path)
 
-        return TensorDataset(data["images"], data["labels"])
-
-    else:
-        logging.info(f"No saved data found. processing with Opencv {mode}")
-
-        processed_set = ImageDatasetwithCV(
-            raw_dataset_path, mode=mode, transform=transform
+    if (
+        os.path.exists(bin_path_full)
+        and os.path.exists(label_path_full)
+        and os.path.exists(meta_path_full)
+    ):
+        logging.info(f"Loading from preprocessed data from {save_prefix}...")
+        meta = torch.load(meta_path_full, weights_only=True)
+        return MemmapDataset(
+            bin_path_full, label_path_full, shape=meta["shape"], transform=transform
         )
 
-        all_images = []
-        all_labels = []
+    logging.info(f"Preprocessing images to memmap format ({mode})....")
 
-        for i in range(len(processed_set)):
+    save_transform = Resize(target_size)
+    raw_set = ImageDatasetwithCV(raw_dataset_path, mode=mode, transform=None)
+    num_samples = len(raw_set)
+    img_shape = (num_samples, target_size[0], target_size[1], 3)
 
-            img_tensor, label = processed_set[i]
-            all_images.append(img_tensor)
-            all_labels.append(label)
+    fp = np.memmap(bin_path_full, dtype=np.uint8, mode="w+", shape=img_shape)
 
-        images_tensor = torch.stack(all_images)
-        labels_tensor = torch.tensor(all_labels)
+    all_labels = []
 
-        logging.info(f"Saving processed data to {save_path}")
-        torch.save({"images": images_tensor, "labels": labels_tensor}, save_path)
+    for i in tqdm(range(num_samples), desc="Processing Image"):
+        img_tensor, label = raw_set[i]
+        img_resized = save_transform(img_tensor)
+        img_np = (img_resized.permute(1, 2, 0).numpy() * 225).astype(np.uint8)
+        fp[i] = img_np
+        all_labels.append(label)
 
-        return TensorDataset(images_tensor, labels_tensor)
+    fp.flush()
+    np.save(label_path_full, np.array(all_labels))
+    torch.save({"shape": img_shape}, meta_path_full)
+
+    logging.info(f"Preprocessing complete! Saved to {save_prefix}")
+    return MemmapDataset(bin_path_full, label_path_full, shape=img_shape, transform=transform)
 
 
-
-def get_transform():
-    transform = transforms.Compose([
-        transforms.Resize((224,224)),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406],std=[0.229,0.224,0.225]),
-    ]
+def get_train_transform():
+    transform = transforms.Compose(
+        [
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            transforms.RandomRotation(10),
+            transforms.RandomHorizontalFlip(),
+        ]
     )
 
+    return transform
+
+
+def get_test_transform():
+    transform = transforms.Compose(
+        [
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ]
+    )
     return transform

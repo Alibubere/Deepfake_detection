@@ -3,3 +3,5 @@ Final_Dataset
 *.pth
 *.pt
 *.pyc
+*.bin
+*npy
