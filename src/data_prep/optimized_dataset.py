@@ -28,7 +28,7 @@ def get_optimized_dataset(
         and os.path.exists(label_path_full)
         and os.path.exists(meta_path_full)
     ):
-        logging.info(f"Loading from preprocessed data from {save_prefix}...")
+        logging.info(f"Loading from preprocessed data from {bin_path_full}...")
         meta = torch.load(meta_path_full, weights_only=True)
         return MemmapDataset(
             bin_path_full, label_path_full, shape=meta["shape"], transform=transform
