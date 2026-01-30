@@ -61,30 +61,3 @@ def test_one_epoch(model: nn.Module, dataloader:torch.utils.data.DataLoader, dev
     test_acc /= len(dataloader)
 
     return test_loss, test_acc
-
-
-def save_checkpoint(
-    model: nn.Module, optimizer: torch.optim.Optimizer, epoch: int, path, best_test_acc
-):
-    """Save model checkpoint"""
-    checkpoint = {
-        "model_state": model.state_dict(),
-        "optimizer_state": optimizer.state_dict(),
-        "epoch": epoch,
-        "best_test_acc": best_test_acc,
-    }
-    torch.save(checkpoint, path)
-
-
-def load_checkpoint(
-    model: nn.Module, optimizer: torch.optim.Optimizer, device: torch.device, path
-):
-    """Load model checkpoint"""
-    checkpoint = torch.load(path, map_location=device)
-
-    model.load_state_dict(checkpoint["model_state"])
-    optimizer.load_state_dict(checkpoint["optimizer_state"])
-    start_epoch = checkpoint.get("epoch", 1) + 1
-    best_test_acc = checkpoint.get("best_test_acc", 0)
-
-    return model, optimizer, start_epoch, best_test_acc

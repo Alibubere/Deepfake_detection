@@ -6,7 +6,8 @@ from src.data_prep.optimized_dataset import (
     get_train_transform,
     get_test_transform,
 )
-
+from src.model.train_loop import train
+from src.model.train_utils import get_optimizer , get_resnet18_model
 
 def setup_logging():
 

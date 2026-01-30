@@ -1,9 +1,8 @@
 from src.model.train import (
     train_one_epoch_amp,
     test_one_epoch,
-    save_checkpoint,
-    load_checkpoint,
 )
+from src.model.train_utils import save_checkpoint, load_checkpoint
 import torch
 import os
 import logging
