@@ -1,6 +1,5 @@
 save_dir: "data/"
 
-
 root_dir: "Final_Dataset"
 
 save_prefix: "processed_data"
@@ -14,3 +13,13 @@ training:
   resume: True
 
 
+model:
+  model_dir: "models"
+  gray_latest: "gray_latest_model.pth"
+  gray_best: "gray_best_model.pth"
+  clahe_latest: "clahe_latest_model.pth"  
+  clahe_best: "clahe_best_model.pth"
+  edges_latest: "edges_latest_model.pth"
+  edges_best: "edges_best_model.pth"
+  rgb_latest: "rgb_latest_model.pth"
+  rgb_best: "rgb_best_model.pth"
