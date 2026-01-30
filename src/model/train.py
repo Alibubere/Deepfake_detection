@@ -5,7 +5,7 @@ from tqdm import tqdm
 
 def train_one_epoch_amp(
     model: nn.Module,
-    dataloader,
+    dataloader:torch.utils.data.DataLoader,
     optimizer: torch.optim.Optimizer,
     device: torch.device,
     loss_fn,
@@ -39,7 +39,7 @@ def train_one_epoch_amp(
     return train_loss, train_acc
 
 
-def test_one_epoch(model: nn.Module, dataloader, device: torch.device, loss_fn):
+def test_one_epoch(model: nn.Module, dataloader:torch.utils.data.DataLoader, device: torch.device, loss_fn):
     """Validation/testing"""
     model.eval()
     test_loss, test_acc = 0.0, 0.0
