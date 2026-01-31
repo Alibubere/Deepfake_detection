@@ -8,8 +8,8 @@ training:
   num_epochs: 20
   batch_size: 90
   num_workers: 2
-  lr: 1e-3
-  weight_decay: 1e-4
+  lr: 0.001
+  weight_decay: 0.0001
   resume: True
 
 
@@ -23,3 +23,11 @@ model:
   edges_best: "edges_best_model.pth"
   rgb_latest: "rgb_latest_model.pth"
   rgb_best: "rgb_best_model.pth"
+
+
+graph:
+  graph_dir: "Graphs"
+  gray_plot: "gray_train_curves.png"
+  clahe_plot: "clahe_train_curves.png"
+  edges_plot: "edges_train_curves.png"
+  rgb_plot: "rgb_train_curves.png"

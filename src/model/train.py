@@ -10,6 +10,7 @@ def train_one_epoch_amp(
     device: torch.device,
     loss_fn,
     scaler,
+    transform=None
 ):
     """Training with automatic mixed precision - uses fp16 for speed"""
 
@@ -19,6 +20,9 @@ def train_one_epoch_amp(
     for X, y in tqdm(dataloader, desc="Training"):
 
         X, y = X.to(device, non_blocking=True), y.to(device, non_blocking=True)
+
+        if transform:
+            X = transform(X)
 
         with torch.amp.autocast("cuda"):
             y_preds = model(X)

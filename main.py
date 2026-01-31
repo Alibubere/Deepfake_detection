@@ -1,6 +1,8 @@
 import logging
 import os
 import yaml
+import gc
+import torch
 from src.data_prep.optimized_dataset import (
     get_optimized_dataset,
     get_train_transform,
@@ -10,11 +12,10 @@ from src.model.train_loop import train
 from src.model.train_utils import get_optimizer, get_resnet18_model
 from src.data_prep.dataset_split import get_split_data
 from src.data_prep.dataloader import get_dataloader
-import torch
+from src.graphs.plotting import plot_model_performance
 
 
 def setup_logging():
-
     log_dir = "logs"
     os.makedirs(log_dir, exist_ok=True)
     file_name = "Pipeline.log"
@@ -24,30 +25,23 @@ def setup_logging():
         format="%(asctime)s - %(levelname)s - %(message)s",
         handlers=[logging.FileHandler(full_path), logging.StreamHandler()],
     )
-
-    logging.info("Logging initialize successfully")
+    logging.info("Logging initialized successfully")
 
 
 def main():
-
     setup_logging()
-
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+    # Load configuration
     with open("configs/config.yaml", "r") as f:
         config = yaml.safe_load(f)
 
-    # Root dir
+    # Directories and Config
     root_dir = config["root_dir"]
-
-    # Save dir
     save_dir = config["save_dir"]
+    save_prefix = config["save_prefix"]
     os.makedirs(save_dir, exist_ok=True)
 
-    # Save Prefix
-    save_prefix = config["save_prefix"]
-
-    # Training config
     train_config = config["training"]
     num_epochs = train_config["num_epochs"]
     batch_size = train_config["batch_size"]
@@ -56,194 +50,126 @@ def main():
     weight_decay = train_config["weight_decay"]
     resume = train_config["resume"]
 
-    # Model Config
     model_config = config["model"]
     model_dir = model_config["model_dir"]
     os.makedirs(model_dir, exist_ok=True)
 
-    # Gray paths
-    gray_latest = model_config["gray_latest"]
-    gray_latest_full = os.path.join(model_dir, gray_latest)
-    gray_best = model_config["gray_best"]
-    gray_best_full = os.path.join(model_dir, gray_best)
+    graph_config = config["graph"]
+    graph_dir = graph_config["graph_dir"]
+    os.makedirs(graph_dir, exist_ok=True)
 
-    # Clahe paths
-    clahe_latest = model_config["clahe_latest"]
-    clahe_latest_full = os.path.join(model_dir, clahe_latest)
-    clahe_best = model_config["clahe_best"]
-    clahe_best_full = os.path.join(model_dir, clahe_best)
-
-    # Edges paths
-    edges_latest = model_config["edges_latest"]
-    edges_latest_full = os.path.join(model_dir, edges_latest)
-    edges_best = model_config["edges_best"]
-    edges_best_full = os.path.join(model_dir, edges_best)
-
-    # RGB paths
-    rgb_latest = model_config["rgb_latest"]
-    rgb_latest_full = os.path.join(model_dir, rgb_latest)
-    rgb_best = model_config["rgb_best"]
-    rgb_best_full = os.path.join(model_dir, rgb_best)
-
+    # Transforms
     train_transform = get_train_transform()
     test_transform = get_test_transform()
 
-    full_dataset_gray = get_optimized_dataset(
-        root_dir, save_prefix, save_dir=save_dir, mode="gray", transform=test_transform
-    )
-    full_dataset_clahe = get_optimized_dataset(
-        root_dir, save_prefix, save_dir=save_dir, mode="clahe", transform=test_transform
-    )
-    full_dataset_edges = get_optimized_dataset(
-        root_dir, save_prefix, save_dir=save_dir, mode="edges", transform=test_transform
-    )
-    full_dataset_RGB = get_optimized_dataset(
-        root_dir, save_prefix, save_dir=save_dir, mode="RGB", transform=test_transform
-    )
+    # Define the training phases to run sequentially
+    phases = [
+        {
+            "mode": "RGB",
+            "latest": os.path.join(model_dir, model_config["rgb_latest"]),
+            "best": os.path.join(model_dir, model_config["rgb_best"]),
+            "plot": graph_config["rgb_plot"],
+        },
+        {
+            "mode": "clahe",
+            "latest": os.path.join(model_dir, model_config["clahe_latest"]),
+            "best": os.path.join(model_dir, model_config["clahe_best"]),
+            "plot": graph_config["clahe_plot"],
+        },
+        {
+            "mode": "edges",
+            "latest": os.path.join(model_dir, model_config["edges_latest"]),
+            "best": os.path.join(model_dir, model_config["edges_best"]),
+            "plot": graph_config["edges_plot"],
+        },
+        {
+            "mode": "gray",
+            "latest": os.path.join(model_dir, model_config["gray_latest"]),
+            "best": os.path.join(model_dir, model_config["gray_best"]),
+            "plot": graph_config["gray_plot"],
+        },
+    ]
 
-    train_dataset_gray, test_dataset_gray = get_split_data(full_dataset_gray)
-    train_dataset_clahe, test_dataset_clahe = get_split_data(full_dataset_clahe)
-    train_dataset_edges, test_dataset_egdes = get_split_data(full_dataset_edges)
-    train_dataset_rgb, test_dataset_rgb = get_split_data(full_dataset_RGB)
-
-    logging.info(f"Train samples: {len(train_dataset_gray)}")
-    logging.info(f"Test samples: {len(test_dataset_gray)}")
-
-    train_loader_gray = get_dataloader(
-        train_dataset_gray,
-        batch_size=batch_size,
-        shuffle=True,
-        num_workers=num_workers,
-        pin_memory=True,
-        persistent_workers=True,
-        prefetch_factor=2,
-        drop_last=True,
-    )
-    test_loader_gray = get_dataloader(
-        test_dataset_gray,
-        batch_size=batch_size,
-        num_workers=num_workers,
-        pin_memory=True,
-        persistent_workers=True,
-        prefetch_factor=True,
-    )
-
-    train_loader_clahe = get_dataloader(
-        train_dataset_clahe,
-        batch_size=batch_size,
-        shuffle=True,
-        num_workers=num_workers,
-        pin_memory=True,
-        persistent_workers=True,
-        prefetch_factor=2,
-        drop_last=True,
-    )
-    test_loader_clahe = get_dataloader(
-        test_dataset_clahe,
-        batch_size=batch_size,
-        num_workers=num_workers,
-        pin_memory=True,
-        persistent_workers=True,
-        prefetch_factor=True,
-    )
-
-    train_loader_edges = get_dataloader(
-        train_dataset_edges,
-        batch_size=batch_size,
-        shuffle=True,
-        num_workers=num_workers,
-        pin_memory=True,
-        persistent_workers=True,
-        prefetch_factor=2,
-        drop_last=True,
-    )
-    test_loader_edges = get_dataloader(
-        test_dataset_egdes,
-        batch_size=batch_size,
-        num_workers=num_workers,
-        pin_memory=True,
-        persistent_workers=True,
-        prefetch_factor=True,
-    )
-    train_loader_rgb = get_dataloader(
-        train_dataset_rgb,
-        batch_size=batch_size,
-        shuffle=True,
-        num_workers=num_workers,
-        pin_memory=True,
-        persistent_workers=True,
-        prefetch_factor=2,
-        drop_last=True,
-    )
-    test_loader_rgb = get_dataloader(
-        test_dataset_rgb,
-        batch_size=batch_size,
-        num_workers=num_workers,
-        pin_memory=True,
-        persistent_workers=True,
-        prefetch_factor=True,
-    )
-
-    model = get_resnet18_model(device=device)
-    optimizer = get_optimizer(model=model, lr=lr, weight_decay=weight_decay)
-    scaler = torch.amp.GradScaler("cuda")
+    # Shared Loss and Scaler
     loss_fn = torch.nn.CrossEntropyLoss()
+    scaler = torch.amp.GradScaler("cuda")
 
-    history_rgb = train(
-        resume=resume,
-        model=model,
-        optimizer=optimizer,
-        num_epochs=num_epochs,
-        device=device,
-        train_loader=train_loader_rgb,
-        test_loader=test_loader_rgb,
-        latest_path=rgb_latest_full,
-        best_path=rgb_best_full,
-        loss_fn=loss_fn,
-        scaler=scaler,
-    )
+    for phase in phases:
+        mode = phase["mode"]
+        logging.info(f"\n{'='*30}\nSTARTING PHASE: {mode.upper()}\n{'='*30}")
 
-    history_clahe = train(
-        resume=resume,
-        model=model,
-        optimizer=optimizer,
-        num_epochs=num_epochs,
-        device=device,
-        train_loader=train_loader_clahe,
-        test_loader=test_loader_clahe,
-        latest_path=clahe_latest_full,
-        best_path=clahe_best_full,
-        loss_fn=loss_fn,
-        scaler=scaler,
-    )
+        # 1. Initialize fresh model and optimizer for each phase
+        model = get_resnet18_model(device=device)
+        optimizer = get_optimizer(model=model, lr=lr, weight_decay=weight_decay)
 
-    history_edges = train(
-        resume=resume,
-        model=model,
-        optimizer=optimizer,
-        num_epochs=num_epochs,
-        device=device,
-        train_loader=train_loader_edges,
-        test_loader=test_loader_edges,
-        latest_path=edges_latest_full,
-        best_path=edges_best_full,
-        loss_fn=loss_fn,
-        scaler=scaler,
-    )
+        # 2. Load Data for THIS phase only
+        full_dataset = get_optimized_dataset(
+            root_dir,
+            save_prefix,
+            save_dir=save_dir,
+            mode=mode,
+            transform=test_transform,
+        )
+        train_dataset, test_dataset = get_split_data(full_dataset)
 
-    history_gray = train(
-        resume=resume,
-        model=model,
-        optimizer=optimizer,
-        num_epochs=num_epochs,
-        device=device,
-        train_loader=train_loader_gray,
-        test_loader=test_loader_gray,
-        latest_path=gray_latest_full,
-        best_path=gray_best_full,
-        loss_fn=loss_fn,
-        scaler=scaler,
-    )
+        logging.info(
+            f"{mode} - Train samples: {len(train_dataset)}, Test samples: {len(test_dataset)}"
+        )
+
+        # 3. Create DataLoaders
+        train_loader = get_dataloader(
+            train_dataset,
+            batch_size=batch_size,
+            shuffle=True,
+            num_workers=num_workers,
+            pin_memory=True,
+            persistent_workers=False,
+            drop_last=True,
+        )
+        test_loader = get_dataloader(
+            test_dataset,
+            batch_size=batch_size,
+            num_workers=num_workers,
+            pin_memory=True,
+            persistent_workers=False,
+        )
+
+        # 4. Train
+        history = train(
+            resume=resume,
+            model=model,
+            optimizer=optimizer,
+            num_epochs=num_epochs,
+            device=device,
+            train_loader=train_loader,
+            test_loader=test_loader,
+            latest_path=phase["latest"],
+            best_path=phase["best"],
+            loss_fn=loss_fn,
+            scaler=scaler,
+            transform=train_transform
+        )
+
+        # 5. Plot performance
+        plot_model_performance(history, plot_dir=graph_dir, file_name=phase["plot"])
+
+        # 6. CRITICAL CLEANUP FOR WINDOWS
+        del (
+            train_loader,
+            test_loader,
+            train_dataset,
+            test_dataset,
+            full_dataset,
+            model,
+            optimizer,
+        )
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+        logging.info(f"Finished Phase: {mode.upper()}. Resources cleared.")
+
+    logging.info("All training pipelines completed successfully.")
 
 
 if __name__ == "__main__":

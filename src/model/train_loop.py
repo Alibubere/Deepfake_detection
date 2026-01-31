@@ -20,6 +20,7 @@ def train(
     best_path: str,
     loss_fn,
     scaler,
+    transform=None
 ):
     """
     Main training loop for a PyTorch model with support for resuming from checkpoints
@@ -92,7 +93,7 @@ def train(
         logging.info(f"Epoch {epoch}/{num_epochs}")
 
         train_loss, train_acc = train_one_epoch_amp(
-            model, train_loader, optimizer, device, loss_fn, scaler
+            model, train_loader, optimizer, device, loss_fn, scaler,transform
         )
 
         test_loss, test_acc = test_one_epoch(model, test_loader, device, loss_fn)
