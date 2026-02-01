@@ -44,6 +44,8 @@ def plot_model_performance(history: Dict, plot_dir, file_name: str):
     ax2.grid(True, alpha=0.3)
 
     plt.tight_layout()
-    plt.savefig(os.path.join(plot_dir, file_name), dpi=150, bbox_inches="tight")
+    if not os.path.exists(os.path.join(plot_dir,file_name)):    
+        plt.savefig(os.path.join(plot_dir, file_name), dpi=150, bbox_inches="tight")
+        
     logging.info(f"Training curves saved to {plot_dir}/{file_name}")
     plt.show()
